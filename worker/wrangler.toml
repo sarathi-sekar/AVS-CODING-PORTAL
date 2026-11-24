@@ -1,0 +1,16 @@
+name = "avs-judge"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "avs-coding-portal"
+# Comma separated origins allowed to call the API (your Firebase Hosting URLs + local dev)
+ALLOWED_ORIGINS = "http://localhost:5173,https://avs-coding-portal.web.app,https://avs-coding-portal.firebaseapp.com"
+# Judge0 CE base URL (self-hosted), e.g. https://judge.your-college.example
+JUDGE0_URL = ""
+# Languages that passed `node scripts/verify-judge.mjs`. Leave EMPTY until verified.
+ENABLED_LANGUAGES = ""
+
+# Secrets (wrangler secret put NAME):
+#   FIREBASE_SA_JSON   - full JSON of a Firebase service account key
+#   JUDGE0_AUTH_TOKEN  - optional, if your Judge0 uses X-Auth-Token

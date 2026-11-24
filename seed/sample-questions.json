@@ -1,0 +1,35 @@
+[
+  {
+    "title": "Add Two Numbers",
+    "difficulty": "easy",
+    "topic": "Basic Programming",
+    "description": "Read two integers and print their sum.",
+    "inputFormat": "One line with two integers a and b.",
+    "outputFormat": "Print a + b.",
+    "constraints": "-1000 <= a, b <= 1000",
+    "languages": ["c", "cpp", "java", "python"],
+    "timeLimitMs": 2000,
+    "memoryLimitKb": 262144,
+    "examples": [{ "input": "1 2", "output": "3", "explanation": "1 + 2 = 3" }],
+    "visibleTests": [{ "input": "1 2", "expected": "3" }, { "input": "10 20", "expected": "30" }],
+    "hiddenTests": [{ "input": "-5 5", "expected": "0" }, { "input": "100 200", "expected": "300" }, { "input": "-1000 -1000", "expected": "-2000" }],
+    "hints": ["Read both numbers before adding them."],
+    "editorial": "Read a and b, then print a + b.",
+    "status": "draft"
+  },
+  {
+    "title": "Even or Odd",
+    "difficulty": "easy",
+    "topic": "Conditions",
+    "description": "Read an integer n. Print `Even` if it is even, otherwise print `Odd`.",
+    "inputFormat": "A single integer n.",
+    "outputFormat": "Print Even or Odd.",
+    "constraints": "-100000 <= n <= 100000",
+    "languages": ["c", "cpp", "java", "python"],
+    "examples": [{ "input": "4", "output": "Even" }],
+    "visibleTests": [{ "input": "4", "expected": "Even" }, { "input": "7", "expected": "Odd" }],
+    "hiddenTests": [{ "input": "0", "expected": "Even" }, { "input": "-3", "expected": "Odd" }, { "input": "99998", "expected": "Even" }],
+    "hints": ["Use the remainder operator %. Careful with negative numbers."],
+    "status": "draft"
+  }
+]
