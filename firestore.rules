@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function myDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myDoc().data.status == 'active';
+    }
+    function role() { return myDoc().data.role; }
+    function isAdmin() { return isActive() && role() == 'admin'; }
+    function isStaff() { return isActive() && role() in ['admin', 'faculty', 'placement_coordinator']; }
+    function isContentStaff() { return isActive() && role() in ['admin', 'faculty']; }
+    // First-time setup: the very first account can claim the admin role, exactly once.
+    function claimingAdmin() {
+      return signedIn()
+        && !exists(/databases/$(database)/documents/system/bootstrap)
+        && existsAfter(/databases/$(database)/documents/system/bootstrap)
+        && request.resource.data.role == 'admin'
+        && request.resource.data.status == 'active';
+    }
+    // Minutes a student must spend on a lesson before completing it: half the lesson length, at least 1.
+    function lessonMinutes(lessonId) {
+      let half = int(get(/databases/$(database)/documents/lessons/$(lessonId)).data.estimatedMinutes / 2);
+      return half < 1 ? 1 : half;
+    }
+    function isOwner() { return signedIn() && resource.data.uid == request.auth.uid; }
+
+    // ---- users -------------------------------------------------------
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow list: if isStaff();
+      allow create: if isAdmin()
+        || (signedIn()
+            && request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(['displayName', 'email', 'registerNumber', 'department',
+                                                      'academicYear', 'section', 'role', 'status', 'createdAt', 'updatedAt'])
+            && request.resource.data.displayName is string
+            && request.resource.data.registerNumber is string
+            && ((request.resource.data.role == 'student' && request.resource.data.status == 'pending') || claimingAdmin()));
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && resource.data.status != 'suspended'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'section', 'theme', 'updatedAt'])
+            && (!('theme' in request.resource.data) || request.resource.data.theme in ['light', 'dark'])
+            && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 80)
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'status', 'updatedAt'])
+            && claimingAdmin());
+      allow delete: if false;
+    }
+
+    match /registerNumbers/{regNo} {
+      allow get: if signedIn();
+      allow create: if signedIn() && (request.resource.data.uid == request.auth.uid || isAdmin());
+      allow list, update, delete: if false;
+    }
+
+    // One-time marker that the first admin has been created.
+    match /system/{id} {
+      allow get: if true;
+      allow create: if id == 'bootstrap' && signedIn()
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+      allow list, update, delete: if false;
+    }
+
+    // Admin-managed academic setup (years, sections). Public read: needed on the registration form.
+    match /config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /jobs/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isStaff());
+      allow write: if isStaff();
+    }
+    match /applications/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid || isStaff());
+      allow list: if isOwner() || isStaff();
+      allow create: if isActive() && request.resource.data.uid == request.auth.uid && id == request.auth.uid + '_' + request.resource.data.jobId;
+      allow delete: if isOwner();
+      allow update: if false;
+    }
+    match /events/{id} {
+      allow read: if isActive();
+      allow write: if isStaff();
+    }
+
+    match /resources/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isStaff());
+      allow write: if isStaff();
+    }
+
+    match /challenges/{id} {
+      allow read: if isActive();
+      allow write: if isContentStaff();
+    }
+
+    match /departments/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /announcements/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // ---- learning content: students see published items only -----------
+    match /courses/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isContentStaff());
+      allow write: if isContentStaff();
+    }
+    match /modules/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isContentStaff());
+      allow write: if isContentStaff();
+    }
+    match /lessons/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isContentStaff());
+      allow write: if isContentStaff();
+    }
+    match /questions/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isContentStaff());
+      allow write: if isContentStaff();
+    }
+    // Hidden test cases: staff only. Students can NEVER read this; the judge reads it with a service account.
+    match /questionTests/{id} {
+      allow read, write: if isContentStaff();
+    }
+
+    // ---- assessments ----------------------------------------------------
+    match /assessments/{id} {
+      allow read: if isActive() && (resource.data.status == 'published' || isStaff());
+      allow write: if isStaff();
+    }
+    match /assessmentKeys/{id} {
+      allow read, write: if isStaff();   // answer keys: never readable by students
+    }
+    match /assessmentAttempts/{id} {
+      allow read: if isOwner() || isStaff();
+      // Autosave: only the answers map, only while in progress and before the server-set deadline.
+      allow update: if isOwner()
+        && resource.data.status == 'in_progress'
+        && request.time < resource.data.endsAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers'])
+        && request.resource.data.answers is map;
+      allow create, delete: if false;
+    }
+    match /assessmentCounters/{id} { allow read, write: if false; }
+
+    // ---- progress data: written only by the trusted judge service ------------
+    match /submissions/{id} {
+      allow read: if isOwner() || isStaff();
+      allow write: if false;
+    }
+    match /attempts/{id} {
+      allow read: if isOwner() || isStaff();
+      allow write: if false;
+    }
+    // Lesson progress. The judge server writes it (with XP/streak). When the server is not connected the student
+    // can still record it directly, but ONLY with a server-set start time and only after spending the required time.
+    match /lessonProgress/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid || isStaff());
+      allow list: if isOwner() || isStaff();
+      allow create: if isActive()
+        && request.resource.data.uid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.lessonId
+        && request.resource.data.completed == false
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.keys().hasOnly(['uid', 'courseId', 'lessonId', 'startedAt', 'completed']);
+      allow update: if isOwner() && isActive()
+        && resource.data.completed == false
+        && request.resource.data.completed == true
+        && request.resource.data.completedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completed', 'completedAt'])
+        && request.time >= resource.data.startedAt + duration.value(lessonMinutes(resource.data.lessonId), 'm');
+      allow delete: if false;
+    }
+    match /skills/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow write: if false;
+    }
+    match /achievements/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow write: if false;
+    }
+    match /streaks/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isStaff());
+      allow write: if false;
+    }
+    match /dailyActivity/{id} {
+      allow read: if isOwner() || isStaff();
+      allow write: if false;
+    }
+    match /leaderboard/{uid} {
+      allow read: if isActive();
+      allow write: if false;
+    }
+
+    // ---- student-owned data ----------------------------------------------
+    match /bookmarks/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid);
+      allow list, delete: if isOwner();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+    match /studentNotes/{id} {
+      allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid);
+      allow list, delete: if isOwner();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.text is string && request.resource.data.text.size() <= 5000;
+      allow update: if isOwner() && request.resource.data.uid == request.auth.uid && request.resource.data.text is string && request.resource.data.text.size() <= 5000;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isStaff() {
+      return request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'faculty', 'placement_coordinator'];
+    }
+    function isActive() {
+      return request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+    match /{folder}/{file} {
+      allow read: if isActive();
+      allow write: if isStaff() && request.resource.size < 500 * 1024 * 1024;
+      allow delete: if isStaff();
+    }
+  }
+}

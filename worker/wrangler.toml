@@ -1,0 +1,16 @@
+name = "avs-judge"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+FIREBASE_PROJECT_ID = "avs-coding-portal"
+# Websites allowed to call this API (comma separated). Add your Firebase Hosting URLs.
+ALLOWED_ORIGINS = "http://localhost:5173,https://avs-coding-portal.web.app,https://avs-coding-portal.firebaseapp.com,https://sarathi-sekar.github.io"
+# Free hosted judge: https://onlinecompiler.io (100,000 runs / month)
+JUDGE_PROVIDER = "onlinecompiler"
+# Languages you verified with `npm run verify`. Leave EMPTY until verified.
+ENABLED_LANGUAGES = "c,cpp,java,python,sql"
+
+# SECRETS (never put these in this file):
+#   npx wrangler secret put ONLINECOMPILER_API_KEY
+#   npx wrangler secret put FIREBASE_SA_JSON

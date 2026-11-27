@@ -1,0 +1,11 @@
+{
+  "name": "avs-judge-worker",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "verify": "node scripts/verify-judge.mjs"
+  },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

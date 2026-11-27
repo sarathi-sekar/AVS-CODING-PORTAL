@@ -1,0 +1,26 @@
+{
+  "title": "C Programming - Getting Started",
+  "description": "Write, compile and understand your first C programs.",
+  "category": "C",
+  "level": "Beginner",
+  "status": "draft",
+  "modules": [
+    {
+      "title": "Basics",
+      "lessons": [
+        {
+          "title": "Your first C program",
+          "estimatedMinutes": 10,
+          "level": "Beginner",
+          "content": "## Introduction\nA C program is a text file that a **compiler** turns into a program your computer can run. Every C program starts running from a function named `main`.\n\n## Syntax\n```c\n#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, AVS!\\n\");\n    return 0;\n}\n```\n\n## How it works\n- `#include <stdio.h>` makes `printf` available.\n- `int main(void)` is where execution begins.\n- `printf` prints text. `\\n` moves to a new line.\n- `return 0;` tells the operating system the program finished normally.\n\n## Output\n```\nHello, AVS!\n```\n\n## Common mistakes\n- Forgetting the semicolon at the end of a statement.\n- Writing `Printf` instead of `printf` (C is case sensitive).\n- Forgetting `\\n`, so the next output appears on the same line."
+        },
+        {
+          "title": "Variables and data types",
+          "estimatedMinutes": 12,
+          "level": "Beginner",
+          "content": "## Introduction\nA **variable** is a named place in memory that stores a value. In C you must tell the compiler the type of every variable.\n\n## Important types\n- `int` whole numbers, e.g. `42`\n- `float` / `double` decimal numbers, e.g. `3.14`\n- `char` a single character, e.g. `'A'`\n\n## Syntax\n```c\nint age = 19;\nfloat marks = 87.5f;\nchar grade = 'A';\nprintf(\"%d %.1f %c\\n\", age, marks, grade);\n```\n\n## Output\n```\n19 87.5 A\n```\n\n## Common mistakes\n- Using the wrong format specifier: `%d` for int, `%f` for float, `%c` for char.\n- Using a variable before giving it a value."
+        }
+      ]
+    }
+  ]
+}
